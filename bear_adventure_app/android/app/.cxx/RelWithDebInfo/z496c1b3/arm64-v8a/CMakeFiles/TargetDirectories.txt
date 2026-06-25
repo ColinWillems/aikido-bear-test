@@ -1,0 +1,2 @@
+/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/RelWithDebInfo/z496c1b3/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/RelWithDebInfo/z496c1b3/arm64-v8a/CMakeFiles/rebuild_cache.dir

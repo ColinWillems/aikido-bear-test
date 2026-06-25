@@ -1,0 +1,1 @@
+/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/build/app/intermediates/cxx/RelWithDebInfo/2b3s4i5a/obj/x86

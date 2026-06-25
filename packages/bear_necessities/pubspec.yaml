@@ -1,0 +1,122 @@
+name: bear_necessities
+description: A new Flutter package project.
+version: 0.0.1
+homepage: "https://bearadventure.app"
+publish_to: none
+
+environment:
+  sdk: ">=3.0.6 <4.0.0"
+  flutter: ">=1.17.0"
+
+dependency_overrides:
+  image: 4.5.3
+  archive: 4.0.2
+  intl: 0.20.2
+  csslib: 1.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  gamification:
+    path: ../gamification
+  firebase_core: ^3.12.1
+  firebase_auth: ^5.5.1
+  firebase_crashlytics: ^4.3.4
+  app_links: ^6.3.3
+  firebase_analytics: ^11.4.4
+  firebase_storage: ^12.4.4
+  firebase_performance: ^0.10.1
+  cloud_firestore: ^5.6.5
+  cloud_functions: ^5.2.0
+  get: 5.0.0-release-candidate-9.3.2
+  responsive_framework: ^1.5.1
+  avoid_keyboard: ^0.3.0
+  intl: ^0.20.2
+  tinycolor2: ^3.0.1
+  equatable: ^2.0.7
+  photo_view: ^0.15.0
+  flip_card: ^0.7.0
+  lottie: ^3.3.1
+  dotlottie_loader: ^0.0.4
+  flutter_animate: ^4.5.2
+  rate_limiter: ^1.0.0
+  nanoid: ^1.0.0
+  adaptive_dialog: ^2.4.0
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  shared_preferences: ^2.5.2
+  permission_handler: ^11.4.0
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  image_editor_plus: ^1.0.6
+  # open_filex: ^4.6.0
+  open_filex: ^4.6.0
+  # NOTE: previously pinned to https://github.com/Sameetdmr/open_filex
+  # (a fork that has since been deleted, breaking CI). Reverted to the
+  # upstream pub.dev package — verify regression tests on file open
+  # flows after this change.
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  json_annotation: ^4.9.0
+  freezed_annotation: ^3.0.0
+  device_info_plus: ^11.3.3
+  package_info_plus: ^8.3.0
+  mailer: ^6.4.1
+
+dev_dependencies:
+  build_runner: ^2.4.15
+  flutter_gen_runner: ^5.8.0
+  flutter_lints: ^5.0.0
+  json_serializable: ^6.9.4
+  freezed: ^3.0.3
+
+flutter_gen:
+  output: lib/generated/
+  integrations:
+    # flutter_svg: true
+    lottie: true
+  assets:
+    outputs:
+      class_name: BearAssets
+  fonts:
+    outputs:
+      class_name: BearFonts
+  colors:
+    inputs:
+      - assets/colors/bear-colors.xml
+    outputs:
+      class_name: BearColors
+
+# The following section is specific to Flutter packages.
+flutter:
+  assets:
+    - assets/images/
+    - assets/images/splash/
+    - assets/images/settings/
+    - assets/images/settings/profile/
+    - assets/images/settings/profile/accessories/
+    - assets/images/trophy_cabinet/
+    - assets/images/home/
+    - assets/images/cards/
+    - assets/images/cards/showdown/
+    - assets/images/cards/unlock/
+    - assets/images/dialogs/
+    - assets/images/global/
+    - assets/images/global/nav_bar/
+    - assets/images/global/icons/
+    - assets/images/help/
+    - assets/images/help/guide/
+    - assets/bitmapFonts/Ursa/
+
+  fonts:
+    - family: Ursa
+      fonts:
+        - asset: assets/fonts/Ursa/Ursa-Major-900.otf
+          weight: 900
+        - asset: assets/fonts/Ursa/Ursa-Minor-700.otf
+          weight: 700
+
+  # For details regarding fonts in packages, see
+  # https://flutter.dev/custom-fonts/#from-packages

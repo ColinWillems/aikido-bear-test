@@ -1,0 +1,1 @@
+enum CardCollectionViewType { sets, cards }

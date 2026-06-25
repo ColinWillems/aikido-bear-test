@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bear_brown">#603215</color>
+    <color name="bear_logo">#472E19</color>
+    <color name="bear_red" type="material">#E15650</color>
+    <color name="bear_green" type="material">#009E3D</color>
+    <color name="bear_cream" type="material">#FFEDC6</color>
+    <color name="bear_orange" type="material">#F7931E</color>
+
+    <color name="bear_banner" type="material">#0F5C2D</color>
+    <color name="bear_banner_text" type="material">#FECBC7</color>
+
+    <color name="bear_splash" type="material">#006837</color>
+
+    <color name="bear_appbar_button" type="material">#603215</color>
+    <color name="bear_standard_button" type="material">#198542</color>
+    <color name="bear_action_button" type="material">#FFD43C</color>
+
+    <color name="bear_avatar_blue" type="material">#55B9D3</color>
+    <color name="bear_avatar_purple" type="material">#7A60A7</color>
+    <color name="bear_avatar_yellow" type="material">#FBB92A</color>
+
+    <color name="bear_cards" type="material">#3D7939</color>
+
+    <color name="bear_card_scan" type="material">#5A4CB2</color>
+    <color name="bear_card_bearilliant_beasts" type="material">#0FA548</color>
+    <color name="bear_card_bonus" type="material">#7D2FBD</color>
+</resources>

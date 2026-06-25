@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/danwoolloff/bin/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/danwoolloff/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/Debug/2mz6p4w5/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/danwoolloff/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/Debug/2mz6p4w5/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

@@ -1,0 +1,47 @@
+@font-face {
+  font-family: "Ursa";
+  src: url("/fonts/Ursa/Ursa-Minor-700.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ursa";
+  src: url("/fonts/Ursa/Ursa-Major-900.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* bearGreen #73BE3C - prevents white flash on load */
+  background-color: #73be3c;
+}
+
+/* Default focus indicator for interactive elements without custom styles */
+:focus-visible {
+  outline: 3px solid #472e19;
+  outline-offset: 2px;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

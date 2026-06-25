@@ -1,0 +1,92 @@
+plugins {
+    id "com.android.application"
+    // START: FlutterFire Configuration
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.firebase-perf'
+    id 'com.google.firebase.crashlytics'
+    // END: FlutterFire Configuration
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+def flutterNdkVersion = localProperties.getProperty('flutter.ndkVersion')
+if (flutterNdkVersion == null) {
+    flutterNdkVersion = flutter.ndkVersion
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace = "com.bearsnacks.bearadventure"
+    compileSdk = localProperties.getProperty('flutter.compileSdkVersion') ? localProperties.getProperty('flutter.compileSdkVersion').toInteger() : 36
+    ndkVersion = flutterNdkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+        coreLibraryDesugaringEnabled true
+    }
+    kotlinOptions {
+        jvmTarget = 21
+    }
+    //kotlin {
+    //    jvmToolchain(JavaVersion.VERSION_17.getMajorVersion())
+    //}
+
+    dependencies {
+        coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    }
+    
+    defaultConfig {
+        // Application ID for the BEAR Adventure client app on Google Play.
+        // See: https://developer.android.com/studio/build/application-id.html
+        applicationId = "com.bearsnacks.bearadventure"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-build-configuration.
+        minSdkVersion(localProperties.getProperty('flutter.minSdkVersion') ? localProperties.getProperty('flutter.minSdkVersion').toInteger() : 24)
+        targetSdkVersion(localProperties.getProperty('flutter.targetSdkVersion') ? localProperties.getProperty('flutter.targetSdkVersion').toInteger() : 36)
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+    }
+
+   signingConfigs {
+       release {
+           keyAlias = keystoreProperties['keyAlias']
+           keyPassword = keystoreProperties['keyPassword']
+           storeFile = keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+           storePassword = keystoreProperties['storePassword']
+       }
+   }
+   buildTypes {
+       release {
+           signingConfig = signingConfigs.release
+       }
+   }
+}
+
+flutter {
+    source '../..'
+}

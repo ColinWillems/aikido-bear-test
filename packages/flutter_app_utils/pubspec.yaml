@@ -1,0 +1,21 @@
+name: flutter_app_utils
+description: Reusable app utilities to make using Flutter easier and quicker.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.6 <4.0.0"
+  flutter: ">=3.22.1"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  get: 5.0.0-release-candidate-9.3.2
+  shared_preferences: ^2.5.3
+  path_provider: ^2.1.5
+  flutter_cache_manager: ^3.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

@@ -1,0 +1,31 @@
+{
+  "headingPrefix": "YOU'VE FOUND A",
+  "headingHighlight": "BEAR CARD",
+  "downloadPrompt": "Download the BEAR Card Collectors App to add it to your collection. Your card will be ready for you when opening the app for the first time.",
+  "appStoreBadgeAlt": "Download on the App Store",
+  "googlePlayBadgeAlt": "Get it on Google Play",
+  "headerImageAlt": "Greetings, Collector!",
+  "logoAlt": "BEAR Card Collectors",
+  "redirectUrl": "https://www.bearfruitsnacks.com/en/cards-collection-main-page",
+  "countryDialog": {
+    "title": "SELECT YOUR COUNTRY",
+    "countries": {
+      "ca": "Canada",
+      "nl": "Netherlands",
+      "cz": "Czech Republic",
+      "uk": "United Kingdom",
+      "ir": "Ireland",
+      "us": "United States"
+    },
+    "redirectUrls": {
+      "us": "https://www.bearfruitsnacks.com/en/cards-collection-main-page",
+      "ca": "https://www.bearfruitsnacks.com/en/cards-collection-main-page",
+      "ir": "https://www.bearfruitsnacks.com/en/cards-collection-main-page",
+      "nl": "https://www.bearfruitsnacks.com/en/cards-collection-main-page",
+      "cz": "https://www.bearfruitsnacks.com/en/cards-collection-main-page"
+    },
+    "otherCountries": "Other countries",
+    "otherCountriesDescription": "The BEAR\u00ae Card Collectors app is not available in all countries.\nBased on your selection, you will be directed either to the app or to our website.",
+    "flagAlt": "{country} flag"
+  }
+}

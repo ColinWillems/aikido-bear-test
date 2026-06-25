@@ -1,0 +1,6 @@
+app_identifier("com.bearsnacks.bearadventure")
+# Apple ID en Team ID worden uit ENV gelezen zodat het bestand klant-agnostisch
+# blijft. Zet APPLE_ID, ITC_TEAM_ID en APPLE_TEAM_ID via fastlane match of CI env.
+apple_id(ENV["FASTLANE_APPLE_ID"]) if ENV["FASTLANE_APPLE_ID"]
+team_id(ENV["APPLE_TEAM_ID"]) if ENV["APPLE_TEAM_ID"]
+itc_team_id(ENV["APPLE_ITC_TEAM_ID"]) if ENV["APPLE_ITC_TEAM_ID"]

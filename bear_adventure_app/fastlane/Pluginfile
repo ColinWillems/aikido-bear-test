@@ -1,0 +1,2 @@
+# Shared fastlane plugins for the BEAR Adventure app.
+gem "fastlane-plugin-flutter_version"

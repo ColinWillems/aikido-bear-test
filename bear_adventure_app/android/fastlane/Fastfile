@@ -1,0 +1,103 @@
+# Fastfile voor Android (BEAR Adventure)
+#
+# Wordt gerunt vanuit de `android/` map: `bundle exec fastlane android <lane>`
+# Vereist secrets uit GitHub Actions environment (zie docs/CICD.md).
+
+default_platform(:android)
+
+# Pad helpers — alle paden zijn relatief t.o.v. ios/android folder waarin
+# fastlane draait, dus we resolven naar de root van bear_adventure_app.
+APP_DIR = File.expand_path("../..", __dir__) # => bear_adventure_app
+ROOT_DIR = File.expand_path("../../..", __dir__) # => repo root
+
+def flutter_app_root
+  APP_DIR
+end
+
+# Lees `version: x.y.z+code` uit pubspec.yaml.
+# Gebruikt build_number override uit env (CI) of valt terug op pubspec waarde.
+def read_pubspec_version
+  pubspec = File.read(File.join(flutter_app_root, "pubspec.yaml"))
+  match = pubspec.match(/^version:\s*([\d.]+)\+(\d+)/)
+  raise "Kon `version:` niet lezen uit pubspec.yaml" unless match
+  { name: match[1], code: match[2].to_i }
+end
+
+# Bepaal de version code: in CI gebruiken we GITHUB_RUN_NUMBER + offset om
+# monotone code te garanderen, anders pubspec waarde.
+def resolved_build_number
+  if ENV["BUILD_NUMBER"]
+    ENV["BUILD_NUMBER"].to_i
+  elsif ENV["GITHUB_RUN_NUMBER"]
+    # Offset zodat we niet conflicteren met huidige Play store waardes (max ~52).
+    ENV["GITHUB_RUN_NUMBER"].to_i + 1000
+  else
+    read_pubspec_version[:code]
+  end
+end
+
+def resolved_version_name
+  ENV["VERSION_NAME"] || read_pubspec_version[:name]
+end
+
+# Build de AAB in release modus met juiste version params.
+# Returns het pad naar de gegenereerde AAB.
+def build_release_aab
+  version_name = resolved_version_name
+  build_number = resolved_build_number
+
+  UI.message("Building AAB versie #{version_name}+#{build_number}")
+
+  Dir.chdir(flutter_app_root) do
+    sh(
+      "flutter", "build", "appbundle",
+      "--release",
+      "--build-name=#{version_name}",
+      "--build-number=#{build_number}"
+    )
+  end
+
+  File.join(flutter_app_root, "build", "app", "outputs", "bundle", "release", "app-release.aab")
+end
+
+platform :android do
+
+  desc "Build de Android release AAB (handig voor lokale verificatie)"
+  lane :build do
+    build_release_aab
+  end
+
+  desc "Upload Android AAB naar Play Console internal track (staging)"
+  lane :internal do
+    aab_path = build_release_aab
+
+    upload_to_play_store(
+      track: "internal",
+      aab: aab_path,
+      json_key: ENV.fetch("PLAY_STORE_JSON_KEY_PATH"),
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc "Upload Android AAB naar Play Console production track"
+  lane :production do
+    aab_path = build_release_aab
+
+    upload_to_play_store(
+      track: "production",
+      aab: aab_path,
+      json_key: ENV.fetch("PLAY_STORE_JSON_KEY_PATH"),
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

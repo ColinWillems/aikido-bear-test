@@ -1,0 +1,194 @@
+# Fastfile voor iOS (BEAR Adventure)
+#
+# Wordt gerunt vanuit de `ios/` map: `bundle exec fastlane ios <lane>`
+# Vereist secrets uit GitHub Actions environment (zie docs/CICD.md).
+
+default_platform(:ios)
+
+APP_DIR = File.expand_path("../..", __dir__)  # => bear_adventure_app
+ROOT_DIR = File.expand_path("../../..", __dir__) # => repo root
+
+BUNDLE_ID = "com.bearsnacks.bearadventure"
+SCHEME = "Runner"
+WORKSPACE = "Runner.xcworkspace"
+
+def flutter_app_root
+  APP_DIR
+end
+
+def read_pubspec_version
+  pubspec = File.read(File.join(flutter_app_root, "pubspec.yaml"))
+  match = pubspec.match(/^version:\s*([\d.]+)\+(\d+)/)
+  raise "Kon `version:` niet lezen uit pubspec.yaml" unless match
+  { name: match[1], code: match[2].to_i }
+end
+
+# Bepaal het build number. Voor TestFlight + App Store willen we een waarde
+# die uniek en hoger is dan reeds bestaande builds. Default: TestFlight latest+1.
+def resolved_build_number
+  return ENV["BUILD_NUMBER"].to_i if ENV["BUILD_NUMBER"]
+
+  if ENV["GITHUB_RUN_NUMBER"]
+    return ENV["GITHUB_RUN_NUMBER"].to_i + 1000
+  end
+
+  read_pubspec_version[:code]
+end
+
+def resolved_version_name
+  ENV["VERSION_NAME"] || read_pubspec_version[:name]
+end
+
+# Setup App Store Connect API key auth (als die env vars zijn gezet).
+# Returns het token-hash dat door pilot/deliver/match gebruikt kan worden.
+def app_store_connect_api_key_token
+  key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"]
+  issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"]
+  key_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"]
+
+  return nil unless key_id && issuer_id && key_path
+
+  app_store_connect_api_key(
+    key_id: key_id,
+    issuer_id: issuer_id,
+    key_filepath: key_path,
+    in_house: false
+  )
+end
+
+# Bouwt de Flutter iOS app (zonder code signing) zodat de Xcode build daarna
+# alleen nog moet signen + archive maken.
+def flutter_ios_release_build
+  version_name = resolved_version_name
+  build_number = resolved_build_number
+
+  Dir.chdir(flutter_app_root) do
+    sh("flutter", "clean") if ENV["CI"]
+    sh("flutter", "pub", "get")
+    sh(
+      "flutter", "build", "ios",
+      "--release",
+      "--no-codesign",
+      "--build-name=#{version_name}",
+      "--build-number=#{build_number}"
+    )
+  end
+end
+
+platform :ios do
+
+  before_all do
+    setup_ci if ENV["CI"]
+  end
+
+  desc "Match certificaten en provisioning profiles ophalen"
+  lane :setup_signing do |options|
+    type = options[:type] || "appstore"
+
+    api_token = app_store_connect_api_key_token
+
+    match(
+      type: type,
+      app_identifier: BUNDLE_ID,
+      readonly: ENV["CI"] ? true : false,
+      api_key: api_token
+    )
+  end
+
+  desc "Update pbxproj met manual signing settings die match heeft geleverd"
+  private_lane :apply_signing_settings do |options|
+    type = options[:type] || "appstore"
+    profile_env_key = "sigh_#{BUNDLE_ID}_#{type}_profile-name"
+    profile_name = ENV[profile_env_key]
+
+    UI.user_error!("Geen profile naam gevonden in ENV (#{profile_env_key})") unless profile_name
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: File.join(flutter_app_root, "ios", "Runner.xcodeproj"),
+      team_id: ENV["APPLE_TEAM_ID"],
+      bundle_identifier: BUNDLE_ID,
+      profile_name: profile_name,
+      code_sign_identity: "Apple Distribution",
+      targets: ["Runner"]
+    )
+  end
+
+  desc "Build + sign IPA. Returns het pad naar de gegenereerde IPA."
+  private_lane :build_signed_ipa do |options|
+    type = options[:type] || "appstore"
+    export_method = type == "appstore" ? "app-store" : "ad-hoc"
+
+    # Volgorde is belangrijk:
+    # 1. Match haalt cert + profile op en installeert ze in keychain. Match
+    #    zet ook ENV["sigh_<bundle>_<type>_profile-name"] zodat we weten
+    #    welk profile in de pbxproj moet komen.
+    # 2. Update pbxproj met manual signing settings (team + profile name).
+    #    Dit moet voor `flutter build ios` gebeuren, anders faalt Flutter
+    #    omdat DEVELOPMENT_TEAM leeg is in onze CI-config van pbxproj.
+    # 3. Flutter compileert iOS release zonder codesign. Xcode signt
+    #    daarna in `build_app` met de waardes uit stap 2.
+    setup_signing(type: type)
+    apply_signing_settings(type: type)
+    flutter_ios_release_build
+
+    workspace_path = File.join(flutter_app_root, "ios", WORKSPACE)
+    build_app(
+      workspace: workspace_path,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: export_method,
+      clean: false,
+      skip_profile_detection: true,
+      output_directory: File.join(flutter_app_root, "ios"),
+      export_options: {
+        method: export_method,
+        provisioningProfiles: {
+          BUNDLE_ID => ENV["sigh_#{BUNDLE_ID}_#{type}_profile-name"]
+        },
+        signingStyle: "manual",
+        teamID: ENV["APPLE_TEAM_ID"]
+      }
+    )
+  end
+
+  desc "Build + sign een App Store IPA zonder upload (signing validatie)"
+  lane :validate_signing do
+    build_signed_ipa(type: "appstore")
+    UI.success("Signed IPA produced at #{lane_context[SharedValues::IPA_OUTPUT_PATH]}")
+  end
+
+  desc "Upload build naar TestFlight (internal testers)"
+  lane :beta do
+    build_signed_ipa(type: "appstore")
+
+    api_token = app_store_connect_api_key_token
+
+    pilot(
+      api_key: api_token,
+      app_identifier: BUNDLE_ID,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      distribute_external: false,
+      changelog: ENV["RELEASE_NOTES"] || "Staging build #{resolved_version_name}+#{resolved_build_number}"
+    )
+  end
+
+  desc "Upload build naar App Store Connect (production, geen submit-for-review)"
+  lane :release do
+    build_signed_ipa(type: "appstore")
+
+    api_token = app_store_connect_api_key_token
+
+    upload_to_app_store(
+      api_key: api_token,
+      app_identifier: BUNDLE_ID,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: false,
+      automatic_release: false,
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+  end
+end

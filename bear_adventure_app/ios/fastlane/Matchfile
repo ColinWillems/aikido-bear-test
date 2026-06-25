@@ -1,0 +1,13 @@
+# Fastlane match configuratie voor BEAR Adventure iOS.
+#
+# Certificaten + provisioning profiles worden opgeslagen in een aparte
+# private GitHub repo. De repo URL wordt tijdens CI uit ENV gehaald (zodat
+# we niet hoeven te hardcoden welke org de repo host).
+
+git_url(ENV["MATCH_GIT_URL"] || "git@github.com:iodigital-com/bear-adventure-certificates.git")
+storage_mode("git")
+type("appstore") # standaard. Override met `match(type: "...")` in Fastfile.
+app_identifier(["com.bearsnacks.bearadventure"])
+
+# In CI gebruiken we readonly om accidentele cert regenerates te voorkomen.
+readonly(true) if ENV["CI"]

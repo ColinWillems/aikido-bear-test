@@ -1,0 +1,2 @@
+/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/Debug/1w29103z/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/danwoolloff/Documents/Dev/bear-adventure/bear_adventure_app/android/app/.cxx/Debug/1w29103z/armeabi-v7a/CMakeFiles/rebuild_cache.dir
