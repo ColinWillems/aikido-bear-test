@@ -1,0 +1,15 @@
+# macOS / editor noise
+.DS_Store
+.idea/
+.vscode/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local dependency/build caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
