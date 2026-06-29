@@ -58,7 +58,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Semgrep
-        run: python -m pip install --no-cache-dir "setuptools>=45" "semgrep==1.97.0"
+        run: |
+          python -m pip install --no-cache-dir --upgrade "pip<26" "setuptools<81" wheel
+          python -c "import pkg_resources"
+          python -m pip install --no-cache-dir "semgrep==1.97.0"
       - name: Semgrep full SARIF (report only)
         continue-on-error: true
         run: |
