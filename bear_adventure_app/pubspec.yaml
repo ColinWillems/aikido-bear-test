@@ -119,7 +119,7 @@ dev_dependencies:
   flutter_gen_runner: ^5.14.1
   package_rename: ^1.9.0
   json_serializable: ^6.9.4
-  freezed: ^3.0.3
+  freezed: ^4.0.0-dev.3
 
 get_cli:
   separator: .
