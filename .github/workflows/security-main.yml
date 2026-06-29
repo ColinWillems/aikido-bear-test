@@ -1,0 +1,276 @@
+# Deeper artifact and supply-chain scans on the main branch (and weekly).
+# Full-repo SAST, full SCA against resolved dependencies, SBOMs, release-like
+# Android/iOS artifact builds, MobSF static analysis and the mobile config
+# policy in 'main' mode. No production signing secrets are referenced here.
+name: Security - main
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 3 * * 0" # Sundays 03:41 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: security-main-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.41.1"
+  JAVA_VERSION: "21"
+  SEMGREP_RULESETS: "p/default p/secrets p/dart p/kotlin p/swift p/javascript p/typescript p/python"
+
+jobs:
+  semgrep-full:
+    name: Semgrep SAST (full repo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --no-cache-dir "semgrep==1.97.0"
+      - name: Semgrep full scan (SARIF)
+        continue-on-error: true
+        run: |
+          semgrep scan --metrics=off --sarif --output semgrep.sarif \
+            $(for r in $SEMGREP_RULESETS; do echo --config $r; done)
+      - name: Upload SARIF
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-full
+      - name: Archive SARIF
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: semgrep-full-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+      - name: Gate on critical (ERROR) findings
+        run: |
+          semgrep scan --metrics=off --error --severity ERROR \
+            $(for r in $SEMGREP_RULESETS; do echo --config $r; done)
+
+  sca:
+    name: SCA (Trivy, resolved deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Trivy filesystem scan (SARIF for dashboard)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          scan-type: fs
+          scanners: vuln,license
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+      - name: Trivy filesystem scan (JSON for gate)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          format: json
+          output: trivy.json
+          severity: CRITICAL,HIGH,MEDIUM
+      - name: Upload Trivy SARIF
+        if: ${{ always() && hashFiles('trivy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-sca
+      - name: Archive Trivy reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: trivy-sca
+          path: |
+            trivy.sarif
+            trivy.json
+          if-no-files-found: ignore
+      - name: SCA policy gate (main)
+        run: python3 .ci/security/sca_gate.py --report trivy.json --mode main
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Generate repository SBOM
+        uses: anchore/sbom-action@fc46e51fd3cb168ffb36c6d1915723c47db58abb # v0.17.7
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+          artifact-name: sbom-repository.cyclonedx.json
+
+  mobile-config-policy:
+    name: Mobile config policy (main)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Run mobile policy (main mode)
+        run: |
+          python3 .ci/security/mobile_policy.py --mode main \
+            --sarif mobile-policy.sarif --json mobile-policy.json
+      - name: Upload SARIF
+        if: ${{ always() && hashFiles('mobile-policy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: mobile-policy.sarif
+          category: mobile-config-policy
+      - name: Archive report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: mobile-policy-main
+          path: |
+            mobile-policy.sarif
+            mobile-policy.json
+          if-no-files-found: ignore
+
+  android-artifact-scan:
+    name: Android build + lint + MobSF
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MOBSF_URL: ${{ secrets.MOBSF_URL }}
+      MOBSF_API_KEY: ${{ secrets.MOBSF_API_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b # v4.5.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff # v2.18.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Create scan-only throwaway keystore
+        # NOT a distribution key. Lets the release buildType produce a
+        # release-like, statically-analysable artifact without exposing the
+        # real upload keystore (which only exists in the release environment).
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/scan.jks" \
+            -storepass scanonly -keypass scanonly -alias scan \
+            -keyalg RSA -keysize 2048 -validity 2 -dname "CN=scan-only, O=CI"
+          cat > bear_adventure_app/android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/scan.jks
+          storePassword=scanonly
+          keyPassword=scanonly
+          keyAlias=scan
+          EOF
+      - name: Build release APK + AAB (scan-only)
+        working-directory: bear_adventure_app
+        run: |
+          flutter pub get
+          flutter build apk --release
+          flutter build appbundle --release
+      - name: Android Lint (release) - reported
+        working-directory: bear_adventure_app/android
+        continue-on-error: true
+        run: ./gradlew :app:lintRelease --no-daemon
+      - name: Mobile config policy (main)
+        run: python3 .ci/security/mobile_policy.py --mode main
+      - name: MobSF scan APK
+        if: ${{ env.MOBSF_URL != '' && env.MOBSF_API_KEY != '' }}
+        run: |
+          python3 .ci/security/mobsf_scan.py --mode main --out-dir mobsf-reports \
+            --file bear_adventure_app/build/app/outputs/flutter-apk/app-release.apk
+      - name: Cleanup keystore material
+        if: ${{ always() }}
+        run: |
+          rm -f bear_adventure_app/android/key.properties "$RUNNER_TEMP/scan.jks" || true
+      - name: Archive Android artifacts + reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: android-scan
+          path: |
+            bear_adventure_app/build/app/outputs/flutter-apk/app-release.apk
+            bear_adventure_app/build/app/outputs/bundle/release/app-release.aab
+            bear_adventure_app/android/app/build/reports/lint-results-release.*
+            mobsf-reports/**
+          if-no-files-found: ignore
+
+  ios-artifact-scan:
+    name: iOS build + analyze + MobSF
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      MOBSF_URL: ${{ secrets.MOBSF_URL }}
+      MOBSF_API_KEY: ${{ secrets.MOBSF_API_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff # v2.18.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Resolve dependencies
+        working-directory: bear_adventure_app
+        run: |
+          flutter pub get
+          (cd ios && pod install --repo-update)
+      - name: xcodebuild analyze (no signing) - reported
+        working-directory: bear_adventure_app/ios
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          xcodebuild -workspace Runner.xcworkspace -scheme Runner \
+            -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO analyze | tee "$RUNNER_TEMP/xcodebuild-analyze.log"
+      - name: Build unsigned iOS app + package IPA for static scan
+        working-directory: bear_adventure_app
+        run: |
+          flutter build ios --release --no-codesign
+          APP="build/ios/iphoneos/Runner.app"
+          rm -rf Payload app-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry app-unsigned.ipa Payload
+      - name: MobSF scan IPA
+        if: ${{ env.MOBSF_URL != '' && env.MOBSF_API_KEY != '' }}
+        working-directory: bear_adventure_app
+        run: |
+          python3 ../.ci/security/mobsf_scan.py --mode main \
+            --out-dir ../mobsf-reports --file app-unsigned.ipa
+      - name: Archive iOS reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ios-scan
+          path: |
+            bear_adventure_app/app-unsigned.ipa
+            mobsf-reports/**
+          if-no-files-found: ignore

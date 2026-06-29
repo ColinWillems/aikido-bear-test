@@ -1,0 +1,4 @@
+{
+  "$comment": "Time-boxed, documented risk acceptances. An entry here suppresses a finding in ALL modes (including release) until 'expires' (UTC date, YYYY-MM-DD). Expired or malformed entries are ignored, so the finding starts blocking again automatically. Every entry MUST have id, reason, owner and expires. Keep this list short and review it regularly.",
+  "exceptions": []
+}

@@ -1,0 +1,59 @@
+# Dependency update automation for every package manager in the repository.
+# Security updates are always opened by Dependabot; the schedules below add
+# grouped version updates. CocoaPods is not natively supported by Dependabot -
+# Pods are tracked via the main-branch SCA + SBOM jobs instead (see
+# SECURITY_PIPELINE.md).
+version: 2
+updates:
+  # Pin the GitHub Actions used by the security workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "ci", "security"]
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Flutter / Dart app
+  - package-ecosystem: "pub"
+    directory: "/bear_adventure_app"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "flutter"]
+
+  # Android Gradle
+  - package-ecosystem: "gradle"
+    directory: "/bear_adventure_app/android"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "android"]
+
+  # Ruby (fastlane + cocoapods gems)
+  - package-ecosystem: "bundler"
+    directory: "/bear_adventure_app"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "ci"]
+
+  # Firebase Cloud Functions
+  - package-ecosystem: "npm"
+    directory: "/fir-functions/functions"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "functions"]
+
+  # Landing page (Next.js)
+  - package-ecosystem: "npm"
+    directory: "/bear_adventure_landing_page"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "web"]
+
+  # Python build/translation scripts
+  - package-ecosystem: "pip"
+    directory: "/scripts"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "scripts"]

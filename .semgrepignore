@@ -1,0 +1,42 @@
+# Paths excluded from Semgrep scanning - generated code, dependencies, build
+# output and vendored assets. Application source under lib/, packages/,
+# fir-functions/functions and the landing page app/ stays in scope.
+
+# Dependencies / package manager caches
+**/.dart_tool/
+**/.pub-cache/
+**/node_modules/
+**/Pods/
+**/vendor/
+**/.bundle/
+
+# Build output
+**/build/
+**/.gradle/
+**/DerivedData/
+bear_adventure_landing_page/.next/
+bear_adventure_landing_page/out/
+
+# Generated code (Flutter/Firebase/plugins)
+**/GeneratedPluginRegistrant.*
+**/firebase_options.dart
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+**/*.mocks.dart
+**/l10n/**/*.dart
+
+# Lockfiles and metadata
+**/*.lock
+**/.flutter-plugins-dependencies
+
+# Binary / asset directories
+**/assets/
+**/*.png
+**/*.jpg
+**/*.otf
+**/*.gif
+**/*.lottie
+
+# Test data fixtures used by the security policy unit tests
+.ci/security/tests/

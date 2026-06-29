@@ -1,0 +1,25 @@
+{
+  "$comment": "Pre-existing mobile-config findings accepted as a baseline. These are REPORTED (not blocked) on pull-request and main-branch runs so the pipeline can be adopted without breaking current builds. They are NOT suppressed on release runs - to ship a release with one of these you must add a dated, expiring entry to exceptions.json. Remove an ID from this list once the underlying issue is fixed so regressions are caught.",
+  "findings": [
+    {
+      "id": "IOS_ATS_ARBITRARY_LOADS",
+      "note": "Info.plist sets NSAppTransportSecurity.NSAllowsArbitraryLoads=true. Tracked for remediation: scope ATS to the specific domains that need it.",
+      "added": "2026-06-29"
+    },
+    {
+      "id": "IOS_APS_ENV_DEVELOPMENT",
+      "note": "Runner.entitlements aps-environment=development. fastlane match swaps the App Store profile at build time; confirm release archives carry the production APS environment.",
+      "added": "2026-06-29"
+    },
+    {
+      "id": "ANDROID_RELEASE_NO_MINIFY",
+      "note": "android/app/build.gradle release buildType has no minifyEnabled/shrinkResources. Tracked: enable R8 + resource shrinking with a verified ProGuard config.",
+      "added": "2026-06-29"
+    },
+    {
+      "id": "ANDROID_CUSTOM_SCHEME_DEEPLINK",
+      "note": "bearadventure:// custom scheme is declared in the production manifest for local adb testing. Tracked: move to a debug-only manifest or remove for production.",
+      "added": "2026-06-29"
+    }
+  ]
+}
