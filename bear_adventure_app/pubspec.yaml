@@ -101,7 +101,7 @@ dependencies:
   #flutter_cache_manager_firebase: ^2.0.1
   profanity_filter: ^2.0.0
   screenshot: ^3.0.0
-  timelines_plus: ^1.0.6
+  timelines_plus: ^2.0.0
   gif: ^2.3.0
   non_uniform_border: ^1.0.0
   # catcher:
