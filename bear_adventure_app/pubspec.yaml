@@ -109,7 +109,7 @@ dependencies:
   scroll_snap_list: ^0.9.1
   flutter_html: ^3.0.0
   bordered_text: ^3.0.0
-  image: ^4.5.3
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:
