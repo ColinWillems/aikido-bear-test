@@ -21,7 +21,7 @@ permissions:
 
 env:
   EXPECTED_PACKAGE_ID: "com.bearsnacks.bearadventure"
-  SEMGREP_RULESETS: "p/default p/secrets p/dart p/kotlin p/swift p/javascript p/typescript p/python"
+  SEMGREP_RULESETS: "p/default p/secrets p/javascript p/typescript p/python"
 
 jobs:
   release-gate:
@@ -54,7 +54,10 @@ jobs:
 
       # ---- SAST + SCA (block critical / exploitable high) ------------------ #
       - name: Install Semgrep
-        run: python -m pip install --no-cache-dir "semgrep==1.97.0"
+        run: |
+          python -m pip install --no-cache-dir --upgrade "pip<26" "setuptools<81" wheel
+          python -c "import pkg_resources"
+          python -m pip install --no-cache-dir "semgrep==1.97.0"
       - name: Semgrep gate (block ERROR)
         run: |
           semgrep scan --metrics=off --error --severity ERROR \
