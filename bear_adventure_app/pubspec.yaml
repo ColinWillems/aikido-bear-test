@@ -28,7 +28,7 @@ dependencies:
     path: ../packages/flutter_app_utils
   firebase_app_utils:
     path: ../packages/firebase_app_utils
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
   vector_math: ^2.1.4
   firebase_core: ^3.12.1
   firebase_auth: ^5.5.1
@@ -48,28 +48,28 @@ dependencies:
   intl: ^0.20.2
   introduction_screen: ^4.0.0
   #  git: https://github.com/Pyozer/introduction_screen.git
-  flutter_native_splash: ^2.4.5
+  flutter_native_splash: ^2.4.8
   flutter_launcher_icons: ^0.14.3
   tinycolor2: ^3.0.1
-  equatable: ^2.0.7
+  equatable: ^2.0.8
   photo_view: ^0.15.0
   flip_card: ^0.7.0
   decorated_text:
     git: https://github.com/StrangeTechDev/decorated_text.git
   gif_view: ^1.0.3
   # flutter_svg: ^2.0.0+1
-  lottie: ^3.3.1
+  lottie: ^3.4.0
   dotlottie_loader: ^0.0.4
   flutter_animate: ^4.5.2
   rate_limiter: ^1.0.0
   nanoid: ^1.0.0
-  adaptive_dialog: ^2.4.0
+  adaptive_dialog: ^2.8.0
   path_provider: ^2.1.5
   path: ^1.9.1
   shared_preferences: ^2.5.2
   permission_handler: ^11.4.0
   pdf: ^3.11.3
-  printing: ^5.14.2
+  printing: ^5.14.3
   image_editor_plus: ^1.0.6
   # open_filex: ^4.6.0
   open_filex: ^4.6.0
@@ -101,7 +101,7 @@ dependencies:
   #flutter_cache_manager_firebase: ^2.0.1
   profanity_filter: ^2.0.0
   screenshot: ^3.0.0
-  timelines_plus: ^1.0.6
+  timelines_plus: ^2.0.0
   gif: ^2.3.0
   non_uniform_border: ^1.0.0
   # catcher:
@@ -109,17 +109,17 @@ dependencies:
   scroll_snap_list: ^0.9.1
   flutter_html: ^3.0.0
   bordered_text: ^3.0.0
-  image: ^4.5.3
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.15
-  flutter_gen_runner: ^5.10.0
+  flutter_gen_runner: ^5.14.1
   package_rename: ^1.9.0
   json_serializable: ^6.9.4
-  freezed: ^3.0.3
+  freezed: ^4.0.0-dev.3
 
 get_cli:
   separator: .
