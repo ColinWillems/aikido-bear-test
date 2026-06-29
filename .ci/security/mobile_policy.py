@@ -25,9 +25,11 @@ import os
 import plistlib
 import re
 import sys
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Optional
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 SEVERITY_ORDER = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"]
@@ -166,7 +168,7 @@ def check_android_manifest(path: str) -> list[Finding]:
     findings: list[Finding] = []
     try:
         root = ET.parse(path).getroot()
-    except (ET.ParseError, OSError) as exc:
+    except (ET.ParseError, DefusedXmlException, OSError) as exc:
         raise PolicyError(f"could not parse AndroidManifest {path}: {exc}") from exc
 
     app = root.find("application")
