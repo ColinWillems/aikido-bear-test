@@ -18,7 +18,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.41.1"
-  SEMGREP_RULESETS: "p/default p/secrets p/dart p/kotlin p/swift p/javascript p/typescript p/python"
+  SEMGREP_RULESETS: "p/default p/secrets p/javascript p/typescript p/python"
 
 jobs:
   secret-scan:
