@@ -63,7 +63,7 @@ dependencies:
   flutter_animate: ^4.5.2
   rate_limiter: ^1.0.0
   nanoid: ^1.0.0
-  adaptive_dialog: ^2.4.0
+  adaptive_dialog: ^2.8.0
   path_provider: ^2.1.5
   path: ^1.9.1
   shared_preferences: ^2.5.2
