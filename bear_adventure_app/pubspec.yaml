@@ -116,7 +116,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.15
-  flutter_gen_runner: ^5.10.0
+  flutter_gen_runner: ^5.14.1
   package_rename: ^1.9.0
   json_serializable: ^6.9.4
   freezed: ^3.0.3
