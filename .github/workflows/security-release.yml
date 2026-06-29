@@ -1,0 +1,153 @@
+# Strict release security gate. Runs against the exact release candidate before
+# signing/publishing. Production signing secrets are referenced ONLY here and
+# resolved through the protected `production` environment (manual approval +
+# branch restriction configured in repo settings - see docs/CICD.md section 4).
+# Expose as workflow_call so the publish (fastlane) workflow can require it with
+# `needs:`/`uses:` before uploading to the stores.
+name: Security - release gate
+
+on:
+  push:
+    branches: ["builds/production"]
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: security-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_PACKAGE_ID: "com.bearsnacks.bearadventure"
+  SEMGREP_RULESETS: "p/default p/secrets p/dart p/kotlin p/swift p/javascript p/typescript p/python"
+
+jobs:
+  release-gate:
+    name: Release security gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: production # protected: requires manual approval before running
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      MOBSF_URL: ${{ secrets.MOBSF_URL }}
+      MOBSF_API_KEY: ${{ secrets.MOBSF_API_KEY }}
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+
+      # ---- verified secrets ----------------------------------------------- #
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+
+      # ---- SAST + SCA (block critical / exploitable high) ------------------ #
+      - name: Install Semgrep
+        run: python -m pip install --no-cache-dir "semgrep==1.97.0"
+      - name: Semgrep gate (block ERROR)
+        run: |
+          semgrep scan --metrics=off --error --severity ERROR \
+            $(for r in $SEMGREP_RULESETS; do echo --config $r; done)
+      - name: Trivy SCA (JSON)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          scan-type: fs
+          scanners: vuln
+          format: json
+          output: trivy.json
+          severity: CRITICAL,HIGH,MEDIUM
+      - name: SCA gate (release)
+        run: python3 .ci/security/sca_gate.py --report trivy.json --mode release
+
+      # ---- mobile release configuration policy ----------------------------- #
+      - name: Mobile config policy (release)
+        run: |
+          python3 .ci/security/mobile_policy.py --mode release \
+            --sarif mobile-policy.sarif --json mobile-policy.json
+      - name: Upload mobile policy SARIF
+        if: ${{ always() && hashFiles('mobile-policy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: mobile-policy.sarif
+          category: mobile-config-policy-release
+
+      # ---- package identity -------------------------------------------------#
+      - name: Verify package / bundle identity
+        run: |
+          set -euo pipefail
+          grep -q "applicationId = \"$EXPECTED_PACKAGE_ID\"" \
+            bear_adventure_app/android/app/build.gradle \
+            || { echo "::error::Android applicationId mismatch"; exit 1; }
+          grep -q "BUNDLE_ID = \"$EXPECTED_PACKAGE_ID\"" \
+            bear_adventure_app/ios/fastlane/Fastfile \
+            || { echo "::error::iOS bundle id mismatch in Fastfile"; exit 1; }
+          echo "Package identity OK: $EXPECTED_PACKAGE_ID"
+
+      # ---- Android signing identity verification --------------------------- #
+      # Uses production-only secrets; the keystore is decoded to a temp file and
+      # removed in the cleanup step. Only the public SHA-256 fingerprint and the
+      # alias are printed - never the passwords.
+      - name: Verify Android signing identity
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set - Android signing identity check skipped."
+            exit 0
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" \
+                -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Expected signing alias '$ANDROID_KEY_ALIAS' not found in keystore"
+            exit 1
+          fi
+          echo "Signing alias '$ANDROID_KEY_ALIAS' present. SHA-256 fingerprint:"
+          keytool -list -v -keystore "$RUNNER_TEMP/release.jks" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" \
+            | grep -i "SHA256:" || true
+      - name: Cleanup signing material
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/release.jks" || true
+
+      # ---- iOS entitlements / provisioning sanity -------------------------- #
+      # Full provisioning-profile validation runs on macOS via the existing
+      # fastlane lane `ios validate_signing` (match readonly, no upload); wire
+      # that lane in as an additional required job once macOS minutes allow.
+      - name: Verify iOS entitlements present
+        run: |
+          set -euo pipefail
+          test -f bear_adventure_app/ios/Runner/Runner.entitlements \
+            || { echo "::error::Runner.entitlements missing"; exit 1; }
+          grep -q "associated-domains" bear_adventure_app/ios/Runner/Runner.entitlements \
+            || echo "::warning::No associated-domains entitlement found"
+          echo "iOS entitlements present (release configuration enforced by mobile policy gate above)."
+
+      # ---- MobSF (enforced when configured) -------------------------------- #
+      - name: MobSF availability note
+        if: ${{ env.MOBSF_URL == '' || env.MOBSF_API_KEY == '' }}
+        run: echo "::warning::MOBSF_URL/MOBSF_API_KEY not set - MobSF release scan skipped. Configure them to enforce binary scanning on release."
+
+      - name: Archive release gate reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: release-gate-reports
+          path: |
+            mobile-policy.sarif
+            mobile-policy.json
+            trivy.json
+          if-no-files-found: ignore

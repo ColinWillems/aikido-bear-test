@@ -1,0 +1,39 @@
+{
+  "$comment": "Central finding policy for the BEAR Adventure security pipeline. Edit thresholds here rather than in workflow files. Severities use the canonical scale CRITICAL > HIGH > MEDIUM > LOW > INFO.",
+  "app_dir": "bear_adventure_app",
+  "modes": {
+    "pr": {
+      "$comment": "Fast PR gate. Block new CRITICAL/HIGH. Baselined findings are reported, not blocked.",
+      "block_severities": ["CRITICAL", "HIGH"],
+      "honor_baseline": true,
+      "block_mobile_config": false
+    },
+    "main": {
+      "$comment": "main branch. Block CRITICAL. HIGH reported unless it is an explicit mobile-config violation.",
+      "block_severities": ["CRITICAL"],
+      "honor_baseline": true,
+      "block_mobile_config": true
+    },
+    "release": {
+      "$comment": "Release candidate gate. Block CRITICAL + HIGH and ALL explicit mobile-config violations. Baseline is ignored; only documented, non-expired exceptions suppress a finding.",
+      "block_severities": ["CRITICAL", "HIGH"],
+      "honor_baseline": false,
+      "block_mobile_config": true
+    }
+  },
+  "sca": {
+    "$comment": "Software composition analysis thresholds, consumed by sca_gate.py. block_severities is the set of severities that fail the build when the vulnerability is fixable (has a known fixed version) or always when require_fix_available is false.",
+    "modes": {
+      "pr": { "block_severities": ["CRITICAL", "HIGH"], "require_fix_available": true },
+      "main": { "block_severities": ["CRITICAL"], "require_fix_available": false },
+      "release": { "block_severities": ["CRITICAL", "HIGH"], "require_fix_available": false }
+    }
+  },
+  "mobsf": {
+    "$comment": "MobSF gate thresholds consumed by mobsf_scan.py. Blocks when the MobSF appsec 'high' count (or 'critical' if present) exceeds the allowed budget for the mode.",
+    "modes": {
+      "main": { "max_high": 9999, "max_critical": 0 },
+      "release": { "max_high": 0, "max_critical": 0 }
+    }
+  }
+}

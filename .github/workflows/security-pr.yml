@@ -1,0 +1,195 @@
+# Fast, diff-aware security checks for every pull request.
+# Native artifact builds are intentionally excluded here (consistent with the
+# project's decision to keep PR CI fast - see docs/CICD.md); Android Lint,
+# xcodebuild analyze and MobSF run on the main-branch deep-scan workflow.
+name: Security - PR
+
+on:
+  pull_request:
+    branches: [main, "builds/staging", "builds/production"]
+
+concurrency:
+  group: security-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: read source by default; jobs opt-in to extra scopes.
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.41.1"
+  SEMGREP_RULESETS: "p/default p/secrets p/dart p/kotlin p/swift p/javascript p/typescript p/python"
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout (full history for diff scan)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@83373cf2f8c4db6e24b41c1a9b086bb9619e9cd3 # v2.3.7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+  semgrep:
+    name: Semgrep SAST (diff-aware)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Install Semgrep
+        run: python -m pip install --no-cache-dir "semgrep==1.97.0"
+      - name: Semgrep full SARIF (report only)
+        continue-on-error: true
+        run: |
+          semgrep scan --metrics=off --sarif --output semgrep.sarif \
+            $(for r in $SEMGREP_RULESETS; do echo --config $r; done)
+      - name: Upload Semgrep SARIF to code scanning
+        if: ${{ always() && hashFiles('semgrep.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Archive Semgrep SARIF
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+      - name: Gate on new high-confidence (ERROR) findings vs base
+        run: |
+          semgrep scan --metrics=off --error --severity ERROR \
+            --baseline-commit "${{ github.event.pull_request.base.sha }}" \
+            $(for r in $SEMGREP_RULESETS; do echo --config $r; done)
+
+  dart-analyze-test:
+    name: Dart analyze + security tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Flutter
+        uses: subosito/flutter-action@f2c4f6686ca8e8d6e6d0f28410eeef506ed66aff # v2.18.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: bear_adventure_app
+        run: flutter pub get
+      - name: Static analysis
+        working-directory: bear_adventure_app
+        run: flutter analyze
+      - name: Run tests (incl. deep-link / unlock-url security tests)
+        working-directory: bear_adventure_app
+        run: flutter test --reporter expanded
+
+  functions-lint:
+    name: ESLint (Firebase Functions)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Node
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: fir-functions/functions/package-lock.json
+      - name: Install
+        working-directory: fir-functions/functions
+        run: npm ci
+      # Reported (not blocking): surfaces JS lint issues without failing on
+      # pre-existing style findings. Semgrep is the blocking JS/TS SAST gate.
+      - name: ESLint
+        working-directory: fir-functions/functions
+        continue-on-error: true
+        run: npm run lint
+
+  dependency-review:
+    name: Dependency & license review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # for the PR summary comment
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Dependency Review
+        uses: actions/dependency-review-action@3b139cfc5fae8b618d3eae3675e383bb1769c019 # v4.5.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure
+          license-check: true
+
+  mobile-config-policy:
+    name: Mobile config policy (PR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Run mobile policy (pr mode)
+        run: |
+          python3 .ci/security/mobile_policy.py --mode pr \
+            --sarif mobile-policy.sarif --json mobile-policy.json
+      - name: Upload mobile policy SARIF
+        if: ${{ always() && hashFiles('mobile-policy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@6825d5659bf007b85a0866e2d0f434aacf50de94 # v3.27.5
+        with:
+          sarif_file: mobile-policy.sarif
+          category: mobile-config-policy
+      - name: Archive mobile policy report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: mobile-policy-report
+          path: |
+            mobile-policy.sarif
+            mobile-policy.json
+          if-no-files-found: ignore
+
+  security-script-tests:
+    name: Policy script unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Run unit tests
+        run: python3 -m unittest discover -s .ci/security/tests -p "test_*.py" -v

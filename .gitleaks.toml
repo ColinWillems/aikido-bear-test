@@ -1,0 +1,35 @@
+# Gitleaks configuration for BEAR Adventure.
+# Extends the upstream default ruleset and adds allowlists for files that are
+# public-by-design (Firebase client config) so they do not produce false
+# positives. Real secrets (keystores, .p8 keys, service-account JSON, match
+# repo SSH key) are never committed - they live in GitHub Secrets - and remain
+# in scope here so any accidental commit is caught.
+
+title = "BEAR Adventure gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public-by-design files and generated assets"
+# Firebase mobile/web API keys identify the project but grant no data access
+# (that is enforced by Firebase Security Rules), so the committed client config
+# is intentionally public. See docs/CICD.md section 10.
+paths = [
+  '''bear_adventure_app/lib/firebase_options\.dart''',
+  '''bear_adventure_app/android/app/google-services\.json''',
+  '''bear_adventure_app/ios/Runner/GoogleService-Info\.plist''',
+  '''bear_adventure_app/ios/firebase_app_id_file\.json''',
+  '''fir-functions/\.firebaserc''',
+  '''bear_adventure_landing_page/public/\.well-known/.*''',
+  '''.*\.lock$''',
+  '''.*pubspec\.lock''',
+  '''.*Podfile\.lock''',
+  '''.*Gemfile\.lock''',
+  '''.*package-lock\.json''',
+]
+
+regexes = [
+  # Google API key shape used in Firebase client config (project-scoped, public).
+  '''AIza[0-9A-Za-z\-_]{35}''',
+]
