@@ -166,6 +166,8 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
+      - name: Install policy dependencies
+        run: python -m pip install --no-cache-dir -r .ci/security/requirements.txt
       - name: Run mobile policy (pr mode)
         run: |
           python3 .ci/security/mobile_policy.py --mode pr \
@@ -197,5 +199,7 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
+      - name: Install policy dependencies
+        run: python -m pip install --no-cache-dir -r .ci/security/requirements.txt
       - name: Run unit tests
         run: python3 -m unittest discover -s .ci/security/tests -p "test_*.py" -v
