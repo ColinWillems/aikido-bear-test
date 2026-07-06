@@ -43,7 +43,7 @@ dependencies:
   get: 5.0.0-release-candidate-9.3.2
   responsive_framework: ^1.5.1
   avoid_keyboard: ^0.3.0
-  animated_toggle_switch: ^0.8.4
+  animated_toggle_switch: ^0.8.7
   circular_reveal_animation: ^2.0.1
   intl: ^0.20.2
   introduction_screen: ^4.0.0
