@@ -59,7 +59,7 @@ dependencies:
   gif_view: ^1.0.3
   # flutter_svg: ^2.0.0+1
   lottie: ^3.3.0
-  dotlottie_loader: ^0.0.4
+  dotlottie_loader: ^0.0.6
   flutter_animate: ^4.5.2
   rate_limiter: ^1.0.0
   nanoid: ^1.0.0
